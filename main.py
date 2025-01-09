@@ -1,6 +1,11 @@
 from typing import Annotated, Union
 
-from fastapi import FastAPI, Depends, Request
+import chainlit as cl
+from chainlit.auth import authenticate_user
+from chainlit.context import init_http_context, init_ws_context
+from chainlit.session import WebsocketSession
+from chainlit.utils import mount_chainlit
+from fastapi import FastAPI, Depends
 from fastapi.responses import (
     HTMLResponse,
 )
@@ -8,14 +13,17 @@ from fastapi.security import APIKeyCookie
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-
-import chainlit as cl
-from chainlit.auth import authenticate_user
-from chainlit.utils import mount_chainlit
+from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
+from langchain.memory import ConversationBufferMemory
+from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 app = FastAPI()
 
 cookie_scheme = APIKeyCookie(name="access_token")
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
 
 
 @app.get("/app")
@@ -26,13 +34,11 @@ def read_main(token: Annotated[str, Depends(cookie_scheme)]):
 
 @app.get("/gdocs")
 async def list_docs(
-    request: Request,
-    current_user: Annotated[
-        Union[cl.User], Depends(authenticate_user)
-    ],
+        current_user: Annotated[
+            Union[cl.User], Depends(authenticate_user)
+        ],
 ):
-    # init_http_context(user=current_user)
-    # await cl.Message(content="Hello World").send()
+    init_http_context(user=current_user)
     token = current_user.metadata.get('token')
     creds = Credentials(token=token)
     try:
@@ -58,14 +64,19 @@ async def list_docs(
     return HTMLResponse("Hello World")
 
 
-@app.post("/gdocs/{doc_id}")
+@app.get("/gdocs/{session_id}/{doc_id}")
 async def upload_doc(
-    doc_id: str,
-    request: Request,
-    current_user: Annotated[
-        Union[cl.User], Depends(authenticate_user)
-    ],
+        doc_id: str,
+        session_id: str,
+        current_user: Annotated[
+            Union[cl.User], Depends(authenticate_user)
+        ],
 ):
+    # init both contexts, because we need token from http oauth callback,
+    # and we should pass `chain` to the websocket session. TODO: maybe we can use persistence instead
+    ws_session = WebsocketSession.get_by_id(session_id=session_id)
+    init_ws_context(ws_session)
+    init_http_context(user=current_user)
     token = current_user.metadata.get('token')
     creds = Credentials(token=token)
     try:
@@ -73,7 +84,37 @@ async def upload_doc(
         document = service.documents().get(documentId=doc_id).execute()
         content = document.get('body').get('content')
         full_text = extract_text(content)
-        print(full_text)
+        texts = text_splitter.split_text(full_text)
+
+        # Create a metadata for each chunk
+        metadatas = [{"source": f"{i}-pl"} for i in range(len(texts))]
+
+        # Create a Chroma vector store
+        embeddings = OpenAIEmbeddings()
+        docsearch = await cl.make_async(Chroma.from_texts)(
+            texts, embeddings, metadatas=metadatas,
+            # TODO: add ref to doc_id? and fill other parameters
+            # ids=[doc_id]
+        )
+
+        message_history = ChatMessageHistory()
+
+        memory = ConversationBufferMemory(
+            memory_key="chat_history",
+            output_key="answer",
+            chat_memory=message_history,
+            return_messages=True,
+        )
+
+        # Create a chain that uses the Chroma vector store
+        chain = ConversationalRetrievalChain.from_llm(
+            ChatOpenAI(model_name="gpt-4o-mini", temperature=0, streaming=True),
+            chain_type="stuff",
+            retriever=docsearch.as_retriever(),
+            memory=memory,
+            return_source_documents=True,
+        )
+        cl.user_session.set("chain", chain)
     except HttpError as err:
         print(err)
     return "ok"

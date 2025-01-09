@@ -1,24 +1,45 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import chainlit as cl
 from chainlit.input_widget import Select, Switch, Slider, Tags
+from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
+from langchain_core.documents import Document
 
 
 @cl.on_message
 async def on_message(message: cl.Message):
-    user: cl.User = cl.user_session.get("user")
-    token = user.metadata.get("token")
-    print(token)
-
     # Get all the messages in the conversation in the OpenAI format
-    print(cl.chat_context.to_openai())
+    # print(cl.chat_context.to_openai())
 
-    # Send the response
-    response = f"Hello, you just sent: {message.content}!"
-    await cl.Message(response).send()
+    chain: ConversationalRetrievalChain = cl.user_session.get("chain")
+    print(cl.user_session.get("id"))
+    cb = cl.AsyncLangchainCallbackHandler()
+
+    res = await chain.acall(message.content, callbacks=[cb])
+    answer = res["answer"]
+    source_documents: List[Document] = res["source_documents"]
+
+    text_elements: List[cl.Text] = []
+
+    if source_documents:
+        for source_idx, source_doc in enumerate(source_documents):
+            source_name = f"source_{source_idx}"
+            # Create the text element referenced in the message
+            text_elements.append(
+                cl.Text(
+                    content=source_doc.page_content, name=source_name, display="side"
+                )
+            )
+        source_names = [text_el.name for text_el in text_elements]
+
+        if source_names:
+            answer += f"\nSources: {', '.join(source_names)}"
+        else:
+            answer += "\nNo sources found"
+
+    await cl.Message(content=answer, elements=text_elements).send()
 
 
-# TODO: add scopes and set up to use cookie or use header when accessing an API
 # noinspection PyUnusedLocal
 @cl.oauth_callback
 def oauth_callback(
@@ -27,10 +48,6 @@ def oauth_callback(
   raw_user_data: Dict[str, str],
   default_user: cl.User,
 ) -> Optional[cl.User]:
-    print('raw_user_data')
-    print(raw_user_data)
-    print('default user')
-    print(default_user)
     default_user.metadata['token'] = token
     return default_user
 
@@ -48,6 +65,8 @@ async def set_starters():
 
 @cl.on_chat_start
 async def start():
+    # TODO!!! pass it somehow
+    print(cl.user_session.get("id"))
     settings = cl.ChatSettings(
         [
             Select(
