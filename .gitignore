@@ -5,3 +5,4 @@
 .env
 
 .files/
+.chroma_db/
