@@ -79,12 +79,13 @@ async def on_chat_start():
 
     actions = init_actions(session_id)
     await (cl.Message(
-        content=f"Select docs [for all](http://localhost/gdocs) chats or for [this](http://localhost/{thread_id}/gdocs) chat.",
+        content=f"Select docs [for all](http://localhost/gdocs) chats "
+                f"or for [this](http://localhost/{thread_id}/gdocs) chat only.",
         # actions=actions
     ).send())
 
-    settings = init_settings()
-    await settings.send()
+    # settings = init_settings()
+    # await settings.send()
 
 
 @cl.on_chat_resume
