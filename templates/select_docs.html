@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google-документы</title>
+    <script>
+        async function saveData() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            const data = [];
+            checkboxes.forEach((checkbox) => {
+                data.push({"id": checkbox.dataset.id, "is_enabled": checkbox.checked}); // Собираем ID и статус
+            });
+
+            try {
+                const response = await fetch('/gdocs/save', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data), // Преобразование данных в JSON
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Ошибка: ${response.status}`);
+                }
+
+                alert('Данные успешно сохранены!');
+            } catch (error) {
+                console.error('Ошибка при сохранении данных:', error);
+                alert('Ошибка при сохранении данных.');
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Google-документы</h1>
+    {% for record in records %}
+        <div>
+            <input
+                type="checkbox"
+                id="checkbox-{{ record.id }}"
+                data-id="{{ record.id }}"
+                {% if record.is_enabled %}checked{% endif %}
+            >
+            <label for="checkbox-{{ record.id }}">
+                <a href="https://docs.google.com/document/d/{{ record.id }}" target="_blank">
+                    {{ record.name }}
+                </a>
+            </label>
+        </div>
+    {% endfor %}
+    <button onclick="saveData()">Сохранить</button>
+</body>
+</html>
