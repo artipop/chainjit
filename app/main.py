@@ -17,6 +17,7 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from starlette.responses import RedirectResponse
 
+from lc_helpers import get_llm
 from gdoc_service import gdoc_content_by_id, list_all_gdocs
 from vector_stores import create_chroma
 
@@ -137,7 +138,7 @@ async def create_user_chain(texts, metadatas, user_id):
         return_messages=True,
     )
     return ConversationalRetrievalChain.from_llm(
-        ChatOpenAI(model_name="gpt-4o-mini", temperature=0, streaming=True),
+        get_llm(),
         chain_type="stuff",
         retriever=chroma.as_retriever(),
         memory=memory,
@@ -152,5 +153,7 @@ async def load_doc(doc_id, token):
     metadatas = [{"source": f"{i}-pl"} for i in range(len(texts))]
     return texts, metadatas
 
+
+# TODO: add `/privacy policy` page
 
 mount_chainlit(app=app, target="chat.py", path="/chat")

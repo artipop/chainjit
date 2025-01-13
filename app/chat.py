@@ -1,3 +1,4 @@
+from os import environ
 from typing import Dict, Optional, List
 
 import chainlit as cl
@@ -5,12 +6,12 @@ from chainlit.input_widget import Select, Switch, Slider, Tags
 from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 
+from lc_helpers import get_embeddings, get_llm
 from cl_helpers import chat_ctx_to_openai_history
 from vector_stores import get_chroma
 
-embeddings = OpenAIEmbeddings()
+embeddings = get_embeddings()
 
 
 @cl.on_message
@@ -35,7 +36,7 @@ async def on_message(message: cl.Message):
     # chain: ConversationalRetrievalChain = cl.user_session.get("chain")
     # TODO: use RetrievalQA
     chain = ConversationalRetrievalChain.from_llm(
-        ChatOpenAI(model_name="gpt-4o-mini", temperature=0, streaming=True),
+        get_llm(),
         chain_type="stuff",
         retriever=chroma.as_retriever(),
         memory=memory,
@@ -82,8 +83,8 @@ async def on_chat_start():
     actions = init_actions(session_id)
     # TODO: do not create new chat with only one message every time...
     await (cl.Message(
-        content=f"Select docs [for all](http://localhost/gdocs) chats "
-                f"or for [this](http://localhost/{thread_id}/gdocs) chat only.",
+        content=f"Select docs [for all]({environ.get('BASE_URL')}/gdocs) chats "
+                f"or for [this]({environ.get('BASE_URL')}/{thread_id}/gdocs) chat only.",
         # actions=actions
     ).send())
 
@@ -106,22 +107,6 @@ def oauth_callback(
 ) -> Optional[cl.User]:
     default_user.metadata['token'] = token
     return default_user
-
-
-@cl.action_callback("action_button_1")
-async def on_action_1(action: cl.Action):
-    session_id = cl.user_session.get("id")
-    await cl.Message(content=f"Executed {action.name} [go](http://localhost/gdocs/{session_id})").send()
-    # Optionally remove the action button from the chatbot user interface
-    # await action.remove()
-
-
-@cl.action_callback("action_button_2")
-async def on_action_2(action: cl.Action):
-    print(cl.user_session.get("id"))
-    await cl.Message(content=f"Executed {action.name} [go](http://localhost/gdocs)").send()
-    # Optionally remove the action button from the chatbot user interface
-    # await action.remove()
 
 
 def init_starters():
