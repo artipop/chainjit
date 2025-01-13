@@ -22,6 +22,8 @@ async def on_message(message: cl.Message):
     print('user id is ' + user_id)
 
     chroma = get_chroma(embeddings, user_id)
+    # db_records = chroma.get()
+    # print(db_records['documents'])
     message_history = chat_ctx_to_openai_history(cl.chat_context)
     # TODO: change to some other mem
     memory = ConversationBufferMemory(
@@ -78,6 +80,7 @@ async def on_chat_start():
     session_id = cl.user_session.get("id")
 
     actions = init_actions(session_id)
+    # TODO: do not create new chat with only one message every time...
     await (cl.Message(
         content=f"Select docs [for all](http://localhost/gdocs) chats "
                 f"or for [this](http://localhost/{thread_id}/gdocs) chat only.",
@@ -93,6 +96,7 @@ async def on_chat_resume(thread):
     thread_id = thread.get("id")
 
 
+# noinspection PyUnusedLocal
 @cl.oauth_callback
 def oauth_callback(
         provider_id: str,
@@ -104,7 +108,6 @@ def oauth_callback(
     return default_user
 
 
-# noinspection PyUnusedLocal
 @cl.action_callback("action_button_1")
 async def on_action_1(action: cl.Action):
     session_id = cl.user_session.get("id")

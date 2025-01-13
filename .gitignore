@@ -6,3 +6,4 @@
 
 .files/
 .chroma_db/
+.postgres/
