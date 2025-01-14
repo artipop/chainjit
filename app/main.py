@@ -6,7 +6,7 @@ from chainlit.context import init_http_context
 from chainlit.utils import mount_chainlit
 from fastapi import FastAPI, Depends, Request
 from fastapi.responses import (
-    HTMLResponse,
+    HTMLResponse, FileResponse
 )
 from fastapi.security import APIKeyCookie
 from fastapi.templating import Jinja2Templates
@@ -36,8 +36,13 @@ def read_main(token: Annotated[str, Depends(cookie_scheme)]):
 
 
 @app.get("/")
-def redirect_to_chat():
-    return RedirectResponse('/chat')
+def read_index():
+    return FileResponse('static/index.html')
+
+
+@app.get("/privacy")
+async def read_privacy_policy():
+    return FileResponse('static/privacy.html')
 
 
 def map_item(item):
@@ -154,6 +159,4 @@ async def load_doc(doc_id, token):
     return texts, metadatas
 
 
-# TODO: add `/privacy policy` page
-
-mount_chainlit(app=app, target="chat.py", path="/chat")
+mount_chainlit(app=app, target="chat.py", path="/dok")
