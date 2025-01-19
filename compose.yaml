@@ -1,9 +1,7 @@
 services:
   # TODO wait for DB and migrations
   api:
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    build: .
     volumes:
       - .chroma_db:/code/.chroma_db
     env_file:

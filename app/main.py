@@ -10,14 +10,9 @@ from fastapi.responses import (
 )
 from fastapi.security import APIKeyCookie
 from fastapi.templating import Jinja2Templates
-from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
-from langchain_core.chat_history import InMemoryChatMessageHistory
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from starlette.responses import RedirectResponse
 
-from lc_helpers import get_llm
 from gdoc_service import gdoc_content_by_id, list_all_gdocs
 from vector_stores import create_chroma
 
@@ -92,24 +87,16 @@ async def upload_doc(
     init_http_context(user=current_user)
     token = current_user.metadata.get('token')
     texts, metadatas = await load_doc(doc_id, token)
+    identifier = current_user.identifier
     user_id = current_user.to_dict().get('id')
-    chain = await create_user_chain(texts, metadatas, user_id)
-    cl.user_session.set("chain", chain)
-
-    # TODO: use persistence instead of in-mem session:
-    # identifier = current_user.identifier
-    # connection = "postgresql+psycopg://langchain:langchain@localhost:6024/langchain"  # Uses psycopg3!
-    # vector_store = PGVector(
-    #     embedding_function=embeddings,
-    #     collection_name=identifier,
-    #     connection_string=connection,
-    #     use_jsonb=True,
-    # )
+    db = create_chroma(embeddings, texts, metadatas, user_id + '-docs')
+    # db_records = db.get()
+    # print(db_records['documents'])
     return "ok"
 
 
 @app.post("/gdocs/save")
-async def save_records(
+async def upload_docs(
         request: Request,
         current_user: Annotated[
             Union[cl.User], Depends(authenticate_user)
@@ -118,43 +105,23 @@ async def save_records(
     init_http_context(user=current_user)
     token = current_user.metadata.get('token')
     data = await request.json()
-    t: list[str] = []
-    m: list[dict[str, str]] = []
+    texts = []
+    metadatas = []
     for item in data:
         doc_id = item["id"]
-        texts, metadatas = await load_doc(doc_id, token)
+        t, m = await load_doc(doc_id, token)
         # or we can use Chroma.add_text
-        t.extend(texts)
-        m.extend(metadatas)
+        texts.extend(t)
+        metadatas.extend(m)
     user_id = current_user.to_dict().get('id')
-    chain = await create_user_chain(t, m, user_id)
-    cl.user_session.set("chain", chain)
+    _ = await cl.make_async(create_chroma)(embeddings, texts, metadatas, user_id)
     return {"message": "Данные успешно сохранены"}
 
 
-async def create_user_chain(texts, metadatas, user_id):
-    print('user id is ' + user_id)
-    chroma = await cl.make_async(create_chroma)(embeddings, texts, metadatas, user_id)
-    message_history = InMemoryChatMessageHistory()
-    memory = ConversationBufferMemory(
-        memory_key="chat_history",
-        output_key="answer",
-        chat_memory=message_history,
-        return_messages=True,
-    )
-    return ConversationalRetrievalChain.from_llm(
-        get_llm(),
-        chain_type="stuff",
-        retriever=chroma.as_retriever(),
-        memory=memory,
-        return_source_documents=True,
-    )
-
-
-async def load_doc(doc_id, token):
+async def load_doc(doc_id: str, token: str) -> (list[str], list[dict[str, str]]):
     full_text = await gdoc_content_by_id(doc_id, token)
     texts = text_splitter.split_text(full_text)
-    # Create a metadata for each chunk
+    # and metadata for each chunk
     metadatas = [{"source": f"{i}-pl"} for i in range(len(texts))]
     return texts, metadatas
 

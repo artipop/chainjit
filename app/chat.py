@@ -1,56 +1,34 @@
-from os import environ
-from typing import Dict, Optional, List
+from typing import Dict, Optional
 
 import chainlit as cl
 from chainlit.input_widget import Select, Switch, Slider, Tags
-from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
-from langchain_core.documents import Document
 
-from lc_helpers import get_embeddings, get_llm
 from cl_helpers import chat_ctx_to_openai_history
-from vector_stores import get_chroma
-
-embeddings = get_embeddings()
+from rags import rag_pipe
 
 
 @cl.on_message
 async def on_message(message: cl.Message):
     # Get all the messages in the conversation in the OpenAI format
     user: cl.User = cl.user_session.get("user")
-
     user_id = user.to_dict().get('id')
-    print('user id is ' + user_id)
+    session_id = cl.user_session.get("id")
+    _ = chat_ctx_to_openai_history(cl.chat_context)
+    response_text, sources = rag_pipe(message.content, user_id)
+    formatted_response = f"""
+    {response_text}
 
-    chroma = get_chroma(embeddings, user_id)
-    # db_records = chroma.get()
-    # print(db_records['documents'])
-    message_history = chat_ctx_to_openai_history(cl.chat_context)
-    # TODO: change to some other mem
-    memory = ConversationBufferMemory(
-        memory_key="chat_history",
-        output_key="answer",
-        chat_memory=message_history,
-        return_messages=True,
-    )
-    # chain: ConversationalRetrievalChain = cl.user_session.get("chain")
+    Sources: {sources}
+"""
+    await cl.Message(content=formatted_response).send()
+
     # TODO: use RetrievalQA
-    chain = ConversationalRetrievalChain.from_llm(
-        get_llm(),
-        chain_type="stuff",
-        retriever=chroma.as_retriever(),
-        memory=memory,
-        return_source_documents=True,
-    )
-    print(cl.user_session.get("id"))
-    cb = cl.AsyncLangchainCallbackHandler()
+    # cb = cl.AsyncLangchainCallbackHandler()
+    # res = await chain.acall(query_text, callbacks=[cb])
+    # answer = res["answer"]
+    # source_documents: List[Document] = res["source_documents"]
 
-    res = await chain.acall(message.content, callbacks=[cb])
-    answer = res["answer"]
-    source_documents: List[Document] = res["source_documents"]
-
-    text_elements: List[cl.Text] = []
-
+    # text_elements: List[cl.Text] = []
     # if source_documents:
     #     for source_idx, source_doc in enumerate(source_documents):
     #         source_name = f"source_{source_idx}"
@@ -66,8 +44,7 @@ async def on_message(message: cl.Message):
     #         answer += f"\nSources: {', '.join(source_names)}"
     #     else:
     #         answer += "\nNo sources found"
-
-    await cl.Message(content=answer, elements=text_elements).send()
+    # await cl.Message(content=answer, elements=text_elements).send()
 
 
 @cl.set_starters
@@ -83,13 +60,40 @@ async def on_chat_start():
     actions = init_actions(session_id)
     # TODO: do not create new chat with only one message every time...
     await (cl.Message(
-        content=f"Select docs [for all]({environ.get('BASE_URL')}/gdocs) chats "
-                f"or for [this]({environ.get('BASE_URL')}/{thread_id}/gdocs) chat only.",
+        content=f"Select docs [for all](/gdocs) chats "
+                f"or for [this](/{thread_id}/gdocs) chat only.",
         # actions=actions
     ).send())
 
+    # documents = [
+    #     {"name": "Документ 1", "url": "https://example.com/doc1", "checked": False},
+    #     {"name": "Документ 2", "url": "https://example.com/doc2", "checked": False},
+    #     {"name": "Документ 3", "url": "https://example.com/doc3", "checked": False},
+    # ]
+    # custom_element = cl.CustomElement(
+    #     name="DocumentsList",
+    #     props={"documents": documents},
+    #     display="inline",
+    # )
+    # await cl.Message(
+    #     content="Вот список документов:",
+    #     elements=[custom_element],
+    # ).send()
     # settings = init_settings()
     # await settings.send()
+
+
+# @cl.action_callback("send_documents")
+async def handle_send_documents(event):
+    documents = event["data"]
+    selected_docs = [doc for doc in documents if doc["checked"]]
+
+    # Логика обработки выбранных документов
+    if selected_docs:
+        doc_names = ", ".join(doc["name"] for doc in selected_docs)
+        await cl.Message(content=f"Вы выбрали документы: {doc_names}").send()
+    else:
+        await cl.Message(content="Вы не выбрали ни одного документа.").send()
 
 
 @cl.on_chat_resume
