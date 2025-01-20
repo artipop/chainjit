@@ -22,30 +22,6 @@ async def on_message(message: cl.Message):
 """
     await cl.Message(content=formatted_response).send()
 
-    # TODO: use RetrievalQA
-    # cb = cl.AsyncLangchainCallbackHandler()
-    # res = await chain.acall(query_text, callbacks=[cb])
-    # answer = res["answer"]
-    # source_documents: List[Document] = res["source_documents"]
-
-    # text_elements: List[cl.Text] = []
-    # if source_documents:
-    #     for source_idx, source_doc in enumerate(source_documents):
-    #         source_name = f"source_{source_idx}"
-    #         # Create the text element referenced in the message
-    #         text_elements.append(
-    #             cl.Text(
-    #                 content=source_doc.page_content, name=source_name, display="side"
-    #             )
-    #         )
-    #     source_names = [text_el.name for text_el in text_elements]
-    #
-    #     if source_names:
-    #         answer += f"\nSources: {', '.join(source_names)}"
-    #     else:
-    #         answer += "\nNo sources found"
-    # await cl.Message(content=answer, elements=text_elements).send()
-
 
 @cl.set_starters
 async def set_starters():
