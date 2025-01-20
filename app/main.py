@@ -12,7 +12,7 @@ from fastapi.security import APIKeyCookie
 from fastapi.templating import Jinja2Templates
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from app.lc_helpers import get_embeddings
+from lc_helpers import get_embeddings
 from gdoc_service import gdoc_content_by_id, list_all_gdocs
 from vector_stores import create_chroma
 
