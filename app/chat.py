@@ -28,6 +28,10 @@ async def set_starters(user: cl.User):
     return init_starters()
 
 
+# @cl.set_chat_profiles()
+# def set_chat_profiles(user: cl.User):
+
+
 @cl.on_chat_start
 async def on_chat_start():
     thread_id = cl.context.session.thread_id

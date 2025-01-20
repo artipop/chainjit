@@ -10,9 +10,9 @@ from fastapi.responses import (
 )
 from fastapi.security import APIKeyCookie
 from fastapi.templating import Jinja2Templates
-from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+from app.lc_helpers import get_embeddings
 from gdoc_service import gdoc_content_by_id, list_all_gdocs
 from vector_stores import create_chroma
 
@@ -20,7 +20,7 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 cookie_scheme = APIKeyCookie(name="access_token")
 
-embeddings = OpenAIEmbeddings()
+embeddings = get_embeddings()
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
 
 
