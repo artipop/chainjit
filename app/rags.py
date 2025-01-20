@@ -1,7 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate
 
-from app.lc_helpers import get_llm, get_embeddings
-from app.vector_stores import get_chroma
+from lc_helpers import get_llm, get_embeddings
+from vector_stores import get_chroma
 
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:
