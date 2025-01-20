@@ -4,7 +4,7 @@ import chainlit as cl
 from chainlit.input_widget import Select, Switch, Slider, Tags
 
 from cl_helpers import chat_ctx_to_openai_history
-from rags import rag_pipe
+from rags import rag_pipe, get_rag_docs_ids
 
 
 @cl.on_message
@@ -24,7 +24,7 @@ async def on_message(message: cl.Message):
 
 
 @cl.set_starters
-async def set_starters():
+async def set_starters(user: cl.User):
     return init_starters()
 
 
@@ -32,14 +32,15 @@ async def set_starters():
 async def on_chat_start():
     thread_id = cl.context.session.thread_id
     session_id = cl.user_session.get("id")
-
-    actions = init_actions(session_id)
-    # TODO: do not create new chat with only one message every time...
-    await (cl.Message(
-        content=f"Select docs [for all](/gdocs) chats "
-                f"or for [this](/{thread_id}/gdocs) chat only.",
-        # actions=actions
-    ).send())
+    # actions = init_actions(session_id)
+    user: cl.User = cl.user_session.get("user")
+    user_id = user.to_dict().get('id')
+    docs = get_rag_docs_ids(user_id)
+    if not docs:
+        await (cl.Message(
+            content=f"Select [google docs](/gdocs).",
+            # actions=actions
+        ).send())
 
     # documents = [
     #     {"name": "Документ 1", "url": "https://example.com/doc1", "checked": False},

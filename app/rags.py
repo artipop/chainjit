@@ -28,6 +28,13 @@ def rag_pipe(query_text, user_id):
     return response_text, sources
 
 
+def get_rag_docs_ids(user_id):
+    embeddings = get_embeddings()
+    db = get_chroma(embeddings, user_id + '-docs')
+    db_records = db.get()  # ['ids', 'embeddings', 'documents', 'uris', 'data', 'metadatas', 'included']
+    return db_records['ids']
+
+
 # def retrieval_rag_pipe(query_text, user_id):
 #     embeddings = get_embeddings()
 #     db = get_chroma(embeddings, user_id + '-docs')
