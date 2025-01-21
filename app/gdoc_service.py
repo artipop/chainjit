@@ -23,8 +23,8 @@ async def list_all_gdocs(token, pageSize, pageToken):
             .list(
                 q="mimeType='application/vnd.google-apps.document'",
                 pageSize=pageSize,
-                fields="nextPageToken,files(id,name)",
                 pageToken=pageToken if pageToken else None,
+                fields="nextPageToken,files(id,name)",
             )
             .execute()
         )
