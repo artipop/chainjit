@@ -51,15 +51,15 @@ async def on_chat_start():
     #     {"name": "Документ 2", "url": "https://example.com/doc2", "checked": False},
     #     {"name": "Документ 3", "url": "https://example.com/doc3", "checked": False},
     # ]
-    # custom_element = cl.CustomElement(
-    #     name="DocumentsList",
-    #     props={"documents": documents},
-    #     display="inline",
-    # )
-    # await cl.Message(
-    #     content="Вот список документов:",
-    #     elements=[custom_element],
-    # ).send()
+    custom_element = cl.CustomElement(
+        name="DocumentPage",
+        # props={"documents": documents},
+        display="inline",
+    )
+    await cl.Message(
+        content="Вот список документов:",
+        elements=[custom_element],
+    ).send()
     # settings = init_settings()
     # await settings.send()
 

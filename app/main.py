@@ -57,8 +57,8 @@ async def list_docs(
     token = current_user.metadata.get('token')
 
 
-@app.get("/gdocs")
-async def list_docs(
+@app.get("/gdocs_page")
+async def list_docs_page(
         request: Request,
         current_user: Annotated[
             Union[cl.User], Depends(authenticate_user)
@@ -66,7 +66,7 @@ async def list_docs(
 ):
     init_http_context(user=current_user)
     token = current_user.metadata.get('token')
-    items = await list_all_gdocs(token)
+    items = await list_all_gdocs(token, 10,None)
     if not items:
         print("No files found.")
         return HTMLResponse("void")
@@ -75,6 +75,22 @@ async def list_docs(
         print(f"{item['name']} ({item['id']})")
     return templates.TemplateResponse("select_docs.html",
                                       {"request": request, "records": [map_item(it) for it in items]})
+
+
+@app.get("/gdocs")
+async def list_docs(
+        current_user: Annotated[
+            Union[cl.User], Depends(authenticate_user)
+        ],
+        pageToken: str | None = None,
+        pageSize: int = 10,
+):
+    init_http_context(user=current_user)
+    token = current_user.metadata.get('token')
+    items, nextPageToken = await list_all_gdocs(token, pageSize, pageToken)
+    resp = {'documents': [map_item(it) for it in items], 'nextPageToken': nextPageToken}
+    print('response: ', resp)
+    return resp
 
 
 @app.get("/gdocs/{doc_id}")

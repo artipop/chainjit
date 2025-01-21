@@ -14,7 +14,7 @@ async def gdoc_content_by_id(doc_id, token):
         raise err
 
 
-async def list_all_gdocs(token):
+async def list_all_gdocs(token, pageSize, pageToken):
     creds = Credentials(token=token)
     try:
         service = build("drive", "v3", credentials=creds)
@@ -22,10 +22,13 @@ async def list_all_gdocs(token):
             service.files()
             .list(
                 q="mimeType='application/vnd.google-apps.document'",
-                fields="nextPageToken,files(id,name)")
+                pageSize=pageSize,
+                fields="nextPageToken,files(id,name)",
+                pageToken=pageToken if pageToken else None,
+            )
             .execute()
         )
-        return results.get("files", [])
+        return results.get("files", []), results.get("nextPageToken")
     except HttpError as err:
         raise err
 
