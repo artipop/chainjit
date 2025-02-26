@@ -30,14 +30,14 @@ def read_main(token: Annotated[str, Depends(cookie_scheme)]):
     return {"message": "Hello World from main app"}
 
 
-@app.get("/")
-def read_index():
-    return FileResponse('static/index.html')
-
-
-@app.get("/privacy")
-async def read_privacy_policy():
-    return FileResponse('static/privacy.html')
+# @app.get("/")
+# def read_index():
+#     return FileResponse('static/index.html')
+#
+#
+# @app.get("/privacy")
+# async def read_privacy_policy():
+#     return FileResponse('static/privacy.html')
 
 
 def map_item(item):
@@ -142,4 +142,4 @@ async def load_doc(doc_id: str, token: str) -> (list[str], list[dict[str, str]])
     return texts, metadatas
 
 
-mount_chainlit(app=app, target="chat.py", path="/dok")
+mount_chainlit(app=app, target="chat.py", path="/")
