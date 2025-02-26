@@ -30,16 +30,6 @@ def read_main(token: Annotated[str, Depends(cookie_scheme)]):
     return {"message": "Hello World from main app"}
 
 
-# @app.get("/")
-# def read_index():
-#     return FileResponse('static/index.html')
-#
-#
-# @app.get("/privacy")
-# async def read_privacy_policy():
-#     return FileResponse('static/privacy.html')
-
-
 def map_item(item):
     return {'name': item['name'], 'id': item['id'], 'is_enabled': False}
 
@@ -66,7 +56,7 @@ async def list_docs_page(
 ):
     init_http_context(user=current_user)
     token = current_user.metadata.get('token')
-    items = await list_all_gdocs(token, 10,None)
+    items = await list_all_gdocs(token, 10, None)
     if not items:
         print("No files found.")
         return HTMLResponse("void")
